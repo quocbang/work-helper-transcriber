@@ -1,0 +1,14 @@
+.env
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.egg-info
+*.egg
+*.whl
+*.zip
+*.tar.gz
+.venv
+.mypy_cache
