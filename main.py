@@ -30,13 +30,8 @@ def main():
         if audio_path.is_file():
             # Single file processing
             print(f"Processing file: {audio_path}")
-            results = transcriber.transcribe(str(audio_path))
-            for result in results:
-                if "text" in result:
-                    result["text"] = result["text"].replace("\n", " ")
-                    print(
-                        f"Start: {result['start']} End: {result['end']} Transcription: {result['text']}"
-                    )
+            file_path = transcriber.transcribe(str(audio_path))
+            print("File path:", file_path)
 
         elif audio_path.is_dir():
             # Directory processing

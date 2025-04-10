@@ -1,10 +1,17 @@
 # tasks/transcriber/whisper_transcriber.py
 from typing import Dict, List, Optional
+import os
 
 import librosa
 import torch
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
+
+TRANSCRIPT_FILE_DIR = "/srv/transcripts"
+
+
+# Create DIR if not exsit
+os.makedirs(TRANSCRIPT_FILE_DIR, exist_ok=True)
 
 class WhisperTranscriber:
     def __init__(
@@ -38,7 +45,7 @@ class WhisperTranscriber:
         seconds = int(seconds % 60)
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-    def transcribe(self, audio_path: str) -> List[Dict]:
+    def transcribe(self, audio_path: str) -> str:
         try:
             # Load and preprocess audio
             audio, sr = librosa.load(audio_path, sr=None)
@@ -53,16 +60,11 @@ class WhisperTranscriber:
 
             # Process audio in chunks
             chunk_size = self.max_duration * self.target_sampling_rate
-            transcriptions = []
 
             for chunk_start in range(0, len(audio), chunk_size):
                 chunk = audio[chunk_start : chunk_start + chunk_size]
                 if len(chunk) == 0:
                     continue
-
-                # Calculate timestamp
-                start_time = chunk_start / self.target_sampling_rate
-                end_time = (chunk_start + len(chunk)) / self.target_sampling_rate
 
                 # Process chunk
                 inputs = self.processor(
@@ -79,22 +81,20 @@ class WhisperTranscriber:
                 predicted_ids = self.model.generate(
                     inputs.input_features,
                     forced_decoder_ids=forced_decoder_ids,
+                    return_timestamps=True,
                 )
 
                 chunk_text = self.processor.batch_decode(
                     predicted_ids, skip_special_tokens=True
                 )[0]
 
-                # Store result with timestamps
-                transcriptions.append(
-                    {
-                        "start": self.format_timestamp(start_time),
-                        "end": self.format_timestamp(end_time),
-                        "text": chunk_text.strip(),
-                    }
-                )
+                # save into file
+                file_path =  f"{TRANSCRIPT_FILE_DIR}/{audio_path.split('/')[-1].split('.')[0]}_{self.language}.vtt"
+                with open(file_path, "a", encoding="utf-8") as f:
+                    f.write(f"{chunk_text.strip()}\n")
 
-            return transcriptions
+            return file_path
 
         except Exception as e:
             raise RuntimeError(f"Transcription failed for {audio_path}: {str(e)}")
+            
